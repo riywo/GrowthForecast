@@ -5,7 +5,7 @@ NAME
 
 SYNOPSIS
       % heroku create --stack cedar --buildpack http://github.com/riywo/heroku-buildpack-perl.git
-      % git push heroku master
+      % git push heroku heroku-dev:master
 
 DESCRIPTION
     GrowthForecast is graphing/visualization web tool built on RRDtool

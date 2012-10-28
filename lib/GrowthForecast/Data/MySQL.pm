@@ -87,7 +87,7 @@ sub dbh {
     my $self = shift;
     local $Scope::Container::DBI::DBI_CLASS = 'DBIx::Sunny';
     Scope::Container::DBI->connect(
-        $self->{mysql},
+        $ENV{MYSQL_DSN},
         $ENV{MYSQL_USER},
         $ENV{MYSQL_PASSWORD},
         {

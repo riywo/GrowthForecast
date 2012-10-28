@@ -28,7 +28,7 @@ GetOptions(
     'front-proxy=s' => \@front_proxy,
     'allow-from=s' => \@allow_from,
     'disable-1min-metrics' => \my $disable_short,
-    'with-mysql=s' => \my $mysql,
+    'with-mysql' => \my $mysql,
     'data-dir=s' => \my $data_dir,
     "h|help" => \my $help,
 );

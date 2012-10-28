@@ -133,9 +133,16 @@ $proclet->service(
         use Plack::Session::Store::DBI;
         use Plack::Session::State::Cookie;
         use GrowthForecast::Web;
+        use GrowthForecast::API;
 
         local $0 = "$0 (GrowthForecast::Web)";
         my $web = GrowthForecast::Web->new(
+            root_dir => $root_dir,
+            data_dir => $data_dir,
+            short => !$disable_short,
+            mysql => $mysql,
+        );
+        my $api = GrowthForecast::API->new(
             root_dir => $root_dir,
             data_dir => $data_dir,
             short => !$disable_short,
@@ -173,7 +180,15 @@ $proclet->service(
                 state => Plack::Session::State::Cookie->new(
                     httponly => 1,
                 );
-            $web->psgi;
+
+            sub {
+                my $env = shift;
+                if ($env->{PATH_INFO} =~ m{^/api/}) {
+                    $api->psgi->($env);
+                } else {
+                    $web->psgi->($env);
+                }
+            };
         };
         my $loader = Plack::Loader->load(
             'Starlet',

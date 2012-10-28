@@ -5,6 +5,7 @@ NAME
 
 SYNOPSIS
       % heroku create --stack cedar --buildpack http://github.com/riywo/heroku-buildpack-perl.git
+      % herocu config:add POLLING_URL="http://app.domain/doc"
 
       % heroku addons:add xeround:starter
       % heroku config:add MYSQL_USER=user

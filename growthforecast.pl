@@ -86,7 +86,7 @@ else {
     unlink("$data_dir/$$.tmp");
 }
 
-$bucket_dir = '/data' unless defined $bucket_dir;
+$bucket_dir = 'data' unless defined $bucket_dir;
 
 my $proclet = Proclet->new;
 $proclet->service(

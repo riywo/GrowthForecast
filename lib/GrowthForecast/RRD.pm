@@ -25,10 +25,33 @@ sub new {
     return $self;
 }
 
+sub get_file {
+    my $self = shift;
+    my $data = shift;
+    my $keyname = $self->{bucket_dir} . '/' . $data->{md5} . '.rrd';
+    my $filename = $self->{data_dir} . '/' . $data->{md5} . '.rrd';
+    unless (-f $filename) {
+        debugf "get from S3 $keyname";
+        $self->{bucket}->get_key_filename($keyname, 'GET', $filename);
+    }
+    return $filename;
+}
+
+sub upload_file {
+    my $self = shift;
+    my $data = shift;
+    my $keyname = $self->{bucket_dir} . '/' . $data->{md5} . '.rrd';
+    my $filename = $self->{data_dir} . '/' . $data->{md5} . '.rrd';
+    debugf "add to S3 $keyname";
+    unless ($self->{bucket}->add_key_filename($keyname, $filename)) {
+       die "S3 Upload failed";
+    }
+}
+
 sub path {
     my $self = shift;
     my $data = shift;
-    my $file = $self->{data_dir} . '/' . $data->{md5} . '.rrd';
+    my $file = $self->get_file($data);
     if ( ! -f $file ) {
         eval {
             RRDs::create(
@@ -56,7 +79,7 @@ sub path {
 sub path_short {
     my $self = shift;
     my $data = shift;
-    my $file = $self->{data_dir} . '/' . $data->{md5} . '_s.rrd';
+    my $file = $self->get_file($data);
     if ( ! -f $file ) {
         eval {
             RRDs::create(
@@ -87,6 +110,7 @@ sub update {
         );
         my $ERR=RRDs::error;
         die $ERR if $ERR;
+        $self->upload_file($data);
     };
     die "udpate rrdfile failed: $@" if $@;
 }
@@ -104,6 +128,7 @@ sub update_short {
         );
         my $ERR=RRDs::error;
         die $ERR if $ERR;
+        $self->upload_file($data);
     };
     die "udpate rrdfile failed: $@" if $@;
 }
@@ -400,12 +425,14 @@ sub export {
     return \%export;
 }
 
-
 sub remove {
     my $self = shift;
     my $data = shift;
     my $file = $self->{data_dir} . '/' . $data->{md5} . '.rrd';
     File::Path::rmtree($file);
+    my $keyname = $self->{bucket_dir} . '/' . $data->{md5} . '.rrd';
+    debugf "delete from S3 $keyname";
+    $self->{bucket}->delete_key($keyname);
 }
 
 1;

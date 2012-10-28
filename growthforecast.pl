@@ -7,11 +7,6 @@ use lib "$FindBin::Bin/extlib/lib/perl5";
 use lib "$FindBin::Bin/lib";
 use File::Basename;
 use Getopt::Long;
-use Plack::Loader;
-use Plack::Builder;
-use Plack::Builder::Conditionals;
-use GrowthForecast::Web;
-use GrowthForecast::Worker;
 use Proclet;
 use File::ShareDir qw/dist_dir/;
 use Cwd;
@@ -102,6 +97,7 @@ $proclet->service(
 
 $proclet->service(
     code => sub {
+        use GrowthForecast::Worker;
         local $0 = "$0 (GrowthForecast::Worker 1min)";
         my $worker = GrowthForecast::Worker->new(
             root_dir => $root_dir,
@@ -115,6 +111,7 @@ $proclet->service(
 
 $proclet->service(
     code => sub {
+        use GrowthForecast::Worker;
         local $0 = "$0 (GrowthForecast::Worker)";
         my $worker = GrowthForecast::Worker->new(
             root_dir => $root_dir,
@@ -128,6 +125,13 @@ $proclet->service(
 
 $proclet->service(
     code => sub {
+        use Plack::Loader;
+        use Plack::Builder;
+        use Plack::Builder::Conditionals;
+        use Plack::Session::Store::DBI;
+        use Plack::Session::State::Cookie;
+        use GrowthForecast::Web;
+
         local $0 = "$0 (GrowthForecast::Web)";
         my $web = GrowthForecast::Web->new(
             root_dir => $root_dir,
@@ -151,6 +155,22 @@ $proclet->service(
                 path => qr!^/(?:(?:css|js|images)/|favicon\.ico$)!,
                 root => $root_dir . '/public';
             enable 'Scope::Container';
+            enable 'Session',
+                store => Plack::Session::Store::DBI->new(
+                    get_dbh => sub {
+                        my ($dbh) = $web->data->dbh;
+                        $dbh->do("
+                            CREATE TABLE IF NOT EXISTS sessions (
+                                id           CHAR(72) PRIMARY KEY,
+                                session_data TEXT
+                            );
+                        ");
+                        return $dbh;
+                    },
+                ),
+                state => Plack::Session::State::Cookie->new(
+                    httponly => 1,
+                );
             $web->psgi;
         };
         my $loader = Plack::Loader->load(

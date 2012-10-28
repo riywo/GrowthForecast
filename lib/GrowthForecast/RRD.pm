@@ -36,6 +36,7 @@ sub _refresh_time {
 sub _lock {
     my $file = shift;
     my $lockfile = $file . ".lock";
+    debugf "lock $lockfile";
     open my $lock, '>', $lockfile or die;
     flock $lock, LOCK_EX;
     return $lock;
@@ -43,6 +44,7 @@ sub _lock {
 
 sub _unlock {
     my $lock = shift;
+    debugf "unlock";
     close $lock;
 }
 
@@ -74,7 +76,7 @@ sub get_file {
         debugf "get from GridFS $rrdname";
         my $grid_file = $self->{gridfs}->find_one({ filename => $rrdname });
         if ($grid_file) {
-            open my $fh, '+<', $file or die; 
+            open my $fh, '>', $file or die;
             flock $fh, LOCK_EX;
             $grid_file->print($fh);
             close $fh;

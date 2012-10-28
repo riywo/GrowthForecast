@@ -12,7 +12,7 @@ SYNOPSIS
       % heroku config:add MYSQL_USER=user
       % heroku config:add MYSQL_PASSWORD=password
       % heroku config:add MYSQL_DSN="dbi:mysql:DBNAME;hostname=DNS:PORT"
-      % git push heroku heroku-dev:master
+      % git push heroku heroku-s3:master
 
 DESCRIPTION
     GrowthForecast is graphing/visualization web tool built on RRDtool

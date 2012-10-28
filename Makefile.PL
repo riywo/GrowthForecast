@@ -20,6 +20,7 @@ requires 'Plack::Middleware::Scope::Container' => '0.02';
 requires 'Scope::Container::DBI' => '0.05';
 requires 'Amazon::S3' => '0.45';
 requires 'Plack::Middleware::Debug' => '0';
+requires 'DBD::mysql' => '4.022';
 
 tests 't/*.t t/*/*.t';
 test_requires 'Test::More';

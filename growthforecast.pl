@@ -30,7 +30,6 @@ GetOptions(
     'disable-1min-metrics' => \my $disable_short,
     'with-mysql' => \my $mysql,
     'data-dir=s' => \my $data_dir,
-    'bucket-dir=s' => \my $bucket_dir,
     "h|help" => \my $help,
 );
 
@@ -86,8 +85,6 @@ else {
     unlink("$data_dir/$$.tmp");
 }
 
-$bucket_dir = 'data' unless defined $bucket_dir;
-
 my $proclet = Proclet->new;
 $proclet->service(
     code => sub {
@@ -95,7 +92,6 @@ $proclet->service(
         my $worker = GrowthForecast::Worker->new(
             root_dir => $root_dir,
             data_dir => $data_dir,
-            bucket_dir => $bucket_dir,
             mysql => $mysql,
         );
         $worker->run('short');        
@@ -108,7 +104,6 @@ $proclet->service(
         my $worker = GrowthForecast::Worker->new(
             root_dir => $root_dir,
             data_dir => $data_dir,
-            bucket_dir => $bucket_dir,
             mysql => $mysql
         );
         $worker->run;
@@ -121,7 +116,6 @@ $proclet->service(
         my $web = GrowthForecast::Web->new(
             root_dir => $root_dir,
             data_dir => $data_dir,
-            bucket_dir => $bucket_dir,
             short => !$disable_short,
             mysql => $mysql,
         );

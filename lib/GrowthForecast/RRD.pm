@@ -9,43 +9,50 @@ use File::Temp;
 use File::Zglob;
 use File::Path qw//;
 use Log::Minimal;
-use Amazon::S3;
+use MongoDB;
+use MongoDB::GridFS;
 $Log::Minimal::AUTODUMP =1;
 
 sub new {
     my $class = shift;
     my %args = @_;
     my $self = bless \%args, $class;
-    my $s3 = Amazon::S3->new({
-        aws_access_key_id     => $ENV{S3_KEY},
-        aws_secret_access_key => $ENV{S3_SECRET},
-        retry                 => 1
-    }) or die "Can't create Amazon::S3 object";
-    $self->{bucket} = $s3->bucket($ENV{S3_BUCKET});
+    my $conn = MongoDB::Connection->new(host => $ENV{MONGO_HOST});
+    my $database = $ENV{MONGO_DATABASE};
+    $conn->authenticate($database, $ENV{MONGO_USER}, $ENV{MONGO_PASSWORD});
+    $self->{gridfs} = $conn->$database->get_gridfs;
     return $self;
 }
 
 sub get_file {
     my $self = shift;
     my $data = shift;
-    my $keyname = $self->{bucket_dir} . '/' . $data->{md5} . '.rrd';
-    my $filename = $self->{data_dir} . '/' . $data->{md5} . '.rrd';
-    unless (-f $filename) {
-        debugf "get from S3 $keyname";
-        $self->{bucket}->get_key_filename($keyname, 'GET', $filename);
+    my $rrdname = $data->{md5} . '.rrd';
+    my $file = $self->{data_dir} . '/' . $rrdname;
+    my $grid_file = $self->{gridfs}->find_one({ filename => $rrdname });
+    if ($grid_file) {
+        open my $fh, '>', $file or die;
+        $grid_file->print($fh);
+        close $fh;
+    } else {
+        unlink $file;
     }
-    return $filename;
+    return $file;
 }
 
 sub upload_file {
     my $self = shift;
     my $data = shift;
-    my $keyname = $self->{bucket_dir} . '/' . $data->{md5} . '.rrd';
-    my $filename = $self->{data_dir} . '/' . $data->{md5} . '.rrd';
-    debugf "add to S3 $keyname";
-    unless ($self->{bucket}->add_key_filename($keyname, $filename)) {
-       die "S3 Upload failed";
+    my $rrdname = $data->{md5} . '.rrd';
+    my $file = $self->{data_dir} . '/' . $rrdname;
+    open my $fh, '<', $file or die;
+
+    my @old_ids = map { $_->{_id} } $self->{gridfs}->files->find({filename => $rrdname})->all;
+    $self->{gridfs}->put($fh, { filename => $rrdname });
+    for (@old_ids) {
+        $self->{gridfs}->delete($_);
     }
+    close $fh;
 }
 
 sub path {

@@ -18,6 +18,7 @@ requires 'Plack::Builder::Conditionals' => '0.03';
 requires 'Scope::Container' => '0.04';
 requires 'Plack::Middleware::Scope::Container' => '0.02';
 requires 'Scope::Container::DBI' => '0.05';
+requires 'Amazon::S3' => '0.45';
 
 tests 't/*.t t/*/*.t';
 test_requires 'Test::More';

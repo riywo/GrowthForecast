@@ -11,7 +11,11 @@ use File::Path qw//;
 use Log::Minimal;
 use MongoDB;
 use MongoDB::GridFS;
+use Fcntl qw/:flock/;
+use File::stat;
 $Log::Minimal::AUTODUMP =1;
+
+my $FILE_CACHE_SEC = 60;
 
 sub new {
     my $class = shift;
@@ -24,20 +28,61 @@ sub new {
     return $self;
 }
 
+sub _refresh_time {
+    my $now = time;
+    return $now - ( $now % $FILE_CACHE_SEC );
+}
+
+sub _lock {
+    my $file = shift;
+    my $lockfile = $file . ".lock";
+    open my $lock, '>', $lockfile or die;
+    flock $lock, LOCK_EX;
+    return $lock;
+}
+
+sub _unlock {
+    my $lock = shift;
+    close $lock;
+}
+
+
 sub get_file {
     my $self = shift;
     my $data = shift;
+    my $callback = {@_};
+
     my $rrdname = $data->{md5} . '.rrd';
     my $file = $self->{data_dir} . '/' . $rrdname;
-    debugf "get from GridFS $rrdname";
-    my $grid_file = $self->{gridfs}->find_one({ filename => $rrdname });
-    if ($grid_file) {
-        open my $fh, '>', $file or die;
-        $grid_file->print($fh);
-        close $fh;
+    my $lock = _lock $file;
+
+    if (-f $file) {
+        if (stat($file)->mtime < _refresh_time()) {
+            debugf "get from GridFS $rrdname";
+            my $grid_file = $self->{gridfs}->find_one({ filename => $rrdname });
+            if ($grid_file) {
+                open my $fh, '+<', $file or die; 
+                flock $fh, LOCK_EX;
+                $grid_file->print($fh);
+                close $fh;
+            } else {
+                unlink $file;
+                $callback->{create}->($file);
+            }
+        }
     } else {
-        unlink $file;
+        debugf "get from GridFS $rrdname";
+        my $grid_file = $self->{gridfs}->find_one({ filename => $rrdname });
+        if ($grid_file) {
+            open my $fh, '+<', $file or die; 
+            flock $fh, LOCK_EX;
+            $grid_file->print($fh);
+            close $fh;
+        } else {
+            $callback->{create}->($file);
+        }
     }
+    _unlock $lock;
     return $file;
 }
 
@@ -46,7 +91,9 @@ sub upload_file {
     my $data = shift;
     my $rrdname = $data->{md5} . '.rrd';
     my $file = $self->{data_dir} . '/' . $rrdname;
-    open my $fh, '<', $file or die;
+
+    open my $fh, '+<', $file or die;
+    flock $fh, LOCK_EX;
 
     debugf "get old files from GridFS $rrdname";
     my @old_ids = map { $_->{_id} } $self->{gridfs}->files->find({filename => $rrdname})->all;
@@ -63,49 +110,53 @@ sub upload_file {
 sub path {
     my $self = shift;
     my $data = shift;
-    my $file = $self->get_file($data);
-    if ( ! -f $file ) {
-        eval {
-            RRDs::create(
-                $file,
-                '--step', '300',
-                'DS:num:GAUGE:600:U:U',
-                'DS:sub:GAUGE:600:U:U', 
-                'RRA:AVERAGE:0.5:1:1440',  #5分, 5日
-                'RRA:AVERAGE:0.5:6:1008', #30分, 21日
-                'RRA:AVERAGE:0.5:24:1344', #2時間, 112日 
-                'RRA:AVERAGE:0.5:288:2500', #24時間, 500日
-                'RRA:MAX:0.5:1:1440',  #5分, 5日
-                'RRA:MAX:0.5:6:1008', #30分, 21日
-                'RRA:MAX:0.5:24:1344', #2時間, 112日 
-                'RRA:MAX:0.5:288:2500', #24時間, 500日
-            );
-            my $ERR=RRDs::error;
-            die $ERR if $ERR;
-        };
-        die "init failed: $@" if $@;
-    }
+    my $file = $self->get_file($data,
+        create => sub {
+            my $file = shift;
+            eval {
+                RRDs::create(
+                    $file,
+                    '--step', '300',
+                    'DS:num:GAUGE:600:U:U',
+                    'DS:sub:GAUGE:600:U:U', 
+                    'RRA:AVERAGE:0.5:1:1440',  #5分, 5日
+                    'RRA:AVERAGE:0.5:6:1008', #30分, 21日
+                    'RRA:AVERAGE:0.5:24:1344', #2時間, 112日 
+                    'RRA:AVERAGE:0.5:288:2500', #24時間, 500日
+                    'RRA:MAX:0.5:1:1440',  #5分, 5日
+                    'RRA:MAX:0.5:6:1008', #30分, 21日
+                    'RRA:MAX:0.5:24:1344', #2時間, 112日 
+                    'RRA:MAX:0.5:288:2500', #24時間, 500日
+                );
+                my $ERR=RRDs::error;
+                die $ERR if $ERR;
+            };
+            die "init failed: $@" if $@;
+        }
+    );
     $file;
 }
 
 sub path_short {
     my $self = shift;
     my $data = shift;
-    my $file = $self->get_file($data);
-    if ( ! -f $file ) {
-        eval {
-            RRDs::create(
-                $file,
-                '--step', '60',
-                'DS:num:GAUGE:120:U:U',
-                'DS:sub:GAUGE:120:U:U', 
-                'RRA:AVERAGE:0.5:1:4800',  #1分, 3日(80時間)
-            );
-            my $ERR=RRDs::error;
-            die $ERR if $ERR;
-        };
-        die "init failed: $@" if $@;
-    }
+    my $file = $self->get_file($data,
+        create => sub {
+            my $file = shift;
+            eval {
+                RRDs::create(
+                    $file,
+                    '--step', '60',
+                    'DS:num:GAUGE:120:U:U',
+                    'DS:sub:GAUGE:120:U:U', 
+                    'RRA:AVERAGE:0.5:1:4800',  #1分, 3日(80時間)
+                );
+                my $ERR=RRDs::error;
+                die $ERR if $ERR;
+            };
+            die "init failed: $@" if $@;
+        }
+    );
     $file;
 }
 
@@ -114,6 +165,7 @@ sub update {
     my $data = shift;
 
     my $file = $self->path($data);
+    my $lock = _lock $file;
     eval {
         RRDs::update(
             $file,
@@ -124,6 +176,7 @@ sub update {
         die $ERR if $ERR;
         $self->upload_file($data);
     };
+    _unlock $lock;
     die "udpate rrdfile failed: $@" if $@;
 }
 

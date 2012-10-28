@@ -21,6 +21,7 @@ requires 'Scope::Container::DBI' => '0.05';
 requires 'Plack::Middleware::Debug' => '0';
 requires 'DBD::mysql' => '4.022';
 requires 'MongoDB' => '0';
+requires 'File::stat' => '0';
 
 tests 't/*.t t/*/*.t';
 test_requires 'Test::More';

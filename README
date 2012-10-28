@@ -1,18 +1,23 @@
 NAME
     GrowthForecast - Lightning Fast Graphing/Visualization
 
-        for Heroku using MySQL and Amazon S3
+        for Heroku using MySQL and MongoDB
 
 SYNOPSIS
       % heroku create --stack cedar --buildpack http://github.com/riywo/heroku-buildpack-perl.git
+
       % heroku addons:add xeround:starter
-      % heroku config:add S3_KEY=XXXXXXXXXXX
-      % heroku config:add S3_SECRET=YYYYYYYYYYYY
-      % heroku config:add S3_BUCKET=yourbucket
       % heroku config:add MYSQL_USER=user
       % heroku config:add MYSQL_PASSWORD=password
       % heroku config:add MYSQL_DSN="dbi:mysql:DBNAME;hostname=DNS:PORT"
-      % git push heroku heroku-s3:master
+
+      % heroku addons:add mongolab:starter
+      % heroku config:add MONGO_HOST=host
+      % heroku config:add MONGO_USER=user
+      % heroku config:add MONGO_PASSWORD=password
+      % heroku config:add MONGO_DATABASE=database
+
+      % git push heroku heroku-gridfs:master
 
 DESCRIPTION
     GrowthForecast is graphing/visualization web tool built on RRDtool

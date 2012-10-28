@@ -39,15 +39,15 @@ usage: $0 --port 5005 --host 127.0.0.1 --front-proxy 127.0.0.1
           --allow-from 127.0.0.1
           --disable-1min-metrics
           --data-dir dir
-          --with-mysql dbi:mysql:[dbname];hostname=[localhost]
+          --with-mysql
 
-If you want to use MySQL instead of SQLite, set with-mysql opt with your DSN.
+If you want to use MySQL instead of SQLite, set MYSQL_DSN for MySQL.
 MYSQL_USER,MYSQL_PASSWORD environment values are used as username and password 
 for connecting to MySQL.
 
 eg:
-  \% MYSQL_USER=www MYSQL_PASSWORD=foobar perl $0 \\
-      --with-mysql dbi:mysql:growthforecast;hostname=localhost
+  \% MYSQL_USER=www MYSQL_PASSWORD=foobar \\
+     MYSQL_DSN=dbi:mysql:growthforecast;hostname=localhost perl $0 --with-mysql
 
 GrowthForecast needs CREATE, ALTER, DELETE, INSERT, UPDATE and SELECT privileges
 
@@ -88,6 +88,19 @@ else {
 my $proclet = Proclet->new;
 $proclet->service(
     code => sub {
+        use LWP::UserAgent;
+        my $ua = LWP::UserAgent->new;
+        while (1) {
+            sleep 60;
+            my $res = $ua->get($ENV{POLLING_URL});
+            warn $res->status_line . "\n";
+        }
+    },
+    tag => 'polling',
+);
+
+$proclet->service(
+    code => sub {
         local $0 = "$0 (GrowthForecast::Worker 1min)";
         my $worker = GrowthForecast::Worker->new(
             root_dir => $root_dir,
@@ -95,7 +108,8 @@ $proclet->service(
             mysql => $mysql,
         );
         $worker->run('short');        
-    }
+    },
+    tag => 's-worker',
 ) if !$disable_short;
 
 $proclet->service(
@@ -107,7 +121,8 @@ $proclet->service(
             mysql => $mysql
         );
         $worker->run;
-    }
+    },
+    tag => 'worker',
 );
 
 $proclet->service(
@@ -144,9 +159,9 @@ $proclet->service(
             max_workers => 4,
         );
         $loader->run($app);
-    }
+    },
+    tag => 'web',
 );
-
 
 $proclet->run;
 

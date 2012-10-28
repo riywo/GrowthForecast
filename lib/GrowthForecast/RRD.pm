@@ -9,12 +9,20 @@ use File::Temp;
 use File::Zglob;
 use File::Path qw//;
 use Log::Minimal;
+use Amazon::S3;
 $Log::Minimal::AUTODUMP =1;
 
 sub new {
     my $class = shift;
     my %args = @_;
-    bless \%args, $class;
+    my $self = bless \%args, $class;
+    my $s3 = Amazon::S3->new({
+        aws_access_key_id     => $ENV{S3_KEY},
+        aws_secret_access_key => $ENV{S3_SECRET},
+        retry                 => 1
+    }) or die "Can't create Amazon::S3 object";
+    $self->{bucket} = $s3->bucket($ENV{S3_BACKET});
+    return $self;
 }
 
 sub path {

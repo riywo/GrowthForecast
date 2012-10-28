@@ -8,7 +8,7 @@ use Time::Piece;
 use GrowthForecast::Data;
 use GrowthForecast::RRD;
 use Log::Minimal;
-use Class::Accessor::Lite ( rw => [qw/short mysql data_dir/] );
+use Class::Accessor::Lite ( rw => [qw/short mysql data_dir bucket_dir/] );
 
 sub data {
     my $self = shift;
@@ -23,6 +23,7 @@ sub rrd {
     my $self = shift;
     $self->{__rrd} ||= GrowthForecast::RRD->new(
         data_dir => $self->data_dir,
+        bucket_dir => $self->bucket_dir,
         root_dir => $self->root_dir,
     );
     $self->{__rrd};

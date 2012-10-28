@@ -126,7 +126,7 @@ $proclet->service(
             mysql => $mysql,
         );
         my $app = builder {
-            enable 'Debug', panels => [qw/Environment Memory DBITrace Parameters PerlConfig Response Session Timer/];
+            enable 'Debug', panels => [qw/Environment Memory DBITrace Parameters PerlConfig Response Session Timer/] if ($ENV{GF_DEBUG});
             enable 'Lint';
             enable 'StackTrace';
             if ( @front_proxy ) {

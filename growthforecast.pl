@@ -89,9 +89,10 @@ my $proclet = Proclet->new;
 $proclet->service(
     code => sub {
         use LWP::UserAgent;
+        my $sleep_sec = $ENV{POLLING_SEC} // 60;
         my $ua = LWP::UserAgent->new;
         while (1) {
-            sleep 60;
+            sleep $sleep_sec;
             my $res = $ua->get($ENV{POLLING_URL});
             warn $res->status_line . "\n";
         }

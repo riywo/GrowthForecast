@@ -21,7 +21,7 @@ sub new {
         aws_secret_access_key => $ENV{S3_SECRET},
         retry                 => 1
     }) or die "Can't create Amazon::S3 object";
-    $self->{bucket} = $s3->bucket($ENV{S3_BACKET});
+    $self->{bucket} = $s3->bucket($ENV{S3_BUCKET});
     return $self;
 }
 

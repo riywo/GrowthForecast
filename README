@@ -8,7 +8,7 @@ SYNOPSIS
       % heroku addons:add xeround:starter
       % heroku config:add S3_KEY=XXXXXXXXXXX
       % heroku config:add S3_SECRET=YYYYYYYYYYYY
-      % heroku config:add S3_BACKET=riywo
+      % heroku config:add S3_BUCKET=yourbucket
       % heroku config:add MYSQL_USER=user
       % heroku config:add MYSQL_PASSWORD=password
       % heroku config:add MYSQL_DSN="dbi:mysql:DBNAME;hostname=DNS:PORT"

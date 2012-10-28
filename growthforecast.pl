@@ -11,6 +11,8 @@ use Proclet;
 use File::ShareDir qw/dist_dir/;
 use Cwd;
 use File::Path qw/mkpath/;
+use POSIX qw/tzset/;
+tzset;
 
 my $port = 5125;
 my $host = 0;

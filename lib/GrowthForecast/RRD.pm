@@ -29,6 +29,7 @@ sub get_file {
     my $data = shift;
     my $rrdname = $data->{md5} . '.rrd';
     my $file = $self->{data_dir} . '/' . $rrdname;
+    debugf "get from GridFS $rrdname";
     my $grid_file = $self->{gridfs}->find_one({ filename => $rrdname });
     if ($grid_file) {
         open my $fh, '>', $file or die;
@@ -47,9 +48,13 @@ sub upload_file {
     my $file = $self->{data_dir} . '/' . $rrdname;
     open my $fh, '<', $file or die;
 
+    debugf "get old files from GridFS $rrdname";
     my @old_ids = map { $_->{_id} } $self->{gridfs}->files->find({filename => $rrdname})->all;
+
+    debugf "put to GridFS $rrdname";
     $self->{gridfs}->put($fh, { filename => $rrdname });
     for (@old_ids) {
+        debugf "delete from GridFS $_";
         $self->{gridfs}->delete($_);
     }
     close $fh;
@@ -435,11 +440,16 @@ sub export {
 sub remove {
     my $self = shift;
     my $data = shift;
-    my $file = $self->{data_dir} . '/' . $data->{md5} . '.rrd';
+    my $rrdname = $data->{md5} . '.rrd';
+    my $file = $self->{data_dir} . '/' . $rrdname;
     File::Path::rmtree($file);
-    my $keyname = $self->{bucket_dir} . '/' . $data->{md5} . '.rrd';
-    debugf "delete from S3 $keyname";
-    $self->{bucket}->delete_key($keyname);
+
+    debugf "delete all files from GridFS $rrdname";
+    my @ids = map { $_->{_id} } $self->{gridfs}->files->find({filename => $rrdname})->all;
+    for (@ids) {
+        debugf "delete from GridFS $_";
+        $self->{gridfs}->delete($_);
+    }
 }
 
 1;
